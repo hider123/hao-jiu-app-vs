@@ -1,0 +1,17 @@
+# 依賴套件
+/node_modules
+
+# Vite 的快取與建置輸出
+/dist
+/.vite
+*.log
+
+# 敏感的環境變數檔案
+# 永遠不要將這個檔案上傳！
+.env
+.env.local
+.env.*.local
+
+# 作業系統與編輯器產生的檔案
+.DS_Store
+Thumbs.db

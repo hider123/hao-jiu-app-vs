@@ -1,0 +1,16 @@
+/* 專門用於美化 Leaflet 地圖彈出視窗的自訂樣式 */
+.leaflet-popup-content-wrapper {
+  background-color: #ffffff;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.leaflet-popup-content {
+  margin: 1rem !important;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+
+.leaflet-popup-tip {
+    background: #ffffff !important;
+    box-shadow: none !important;
+}
