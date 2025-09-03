@@ -1,7 +1,8 @@
 import React, { useContext, useState, useEffect, useCallback } from 'react';
-import { auth } from '../firebaseConfig';
+import { auth, db } from '../firebaseConfig'; // 直接從 firebaseConfig 引入 db
 import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { onNewUserCreate, getUserProfile } from '../firebaseService';
+import { doc, onSnapshot } from 'firebase/firestore'; // 引入 onSnapshot
 
 const AuthContext = React.createContext();
 
@@ -14,47 +15,67 @@ export function AuthProvider({ children }) {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const refreshUserProfile = useCallback(async () => {
-    if (currentUser) {
-      const profile = await getUserProfile(currentUser.uid);
-      setUserProfile(profile);
-    }
-  }, [currentUser]);
+  // login, logout, signup 函式保持不變
+  const login = useCallback(async (email, password) => {
+    await signInWithEmailAndPassword(auth, email, password);
+    const user = auth.currentUser;
+    if (user) { return await getUserProfile(user.uid); }
+    return null;
+  }, []);
 
-  async function signup(email, password) {
+  const logout = useCallback(() => {
+    setUserProfile(null);
+    return signOut(auth);
+  }, []);
+  
+  const signup = useCallback(async (email, password) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     if (userCredential.user) {
       await onNewUserCreate(userCredential.user.uid, email);
-      // The onAuthStateChanged listener will handle fetching the profile
     }
     return userCredential;
-  }
+  }, []);
 
-  // --- 關鍵修正：簡化 login 函式 ---
-  // login 的職責只剩下登入，不再需要手動獲取 profile。
-  // 這樣可以確保所有 profile 的更新都來自同一個來源 (onAuthStateChanged)，避免衝突。
-  function login(email, password) {
-    return signInWithEmailAndPassword(auth, email, password);
-  }
+  // --- 關鍵修改：使用 onSnapshot 建立即時監聽 ---
+  useEffect(() => {
+    // onAuthStateChanged 監聽登入狀態的變化
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      if (!user) {
+        // 如果使用者登出，清空 profile 並結束載入
+        setUserProfile(null);
+        setLoading(false);
+      }
+    });
 
-  function logout() {
-    setUserProfile(null);
-    return signOut(auth);
-  }
+    // 清理 auth 監聽器
+    return () => unsubscribeAuth();
+  }, []);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
-      if (user) {
-        const profile = await getUserProfile(user.uid);
-        setUserProfile(profile);
+    // 如果沒有使用者登入，就不用監聽 profile
+    if (!currentUser) return;
+
+    const userDocRef = doc(db, 'users', currentUser.uid);
+    
+    // onSnapshot 會在文件資料有任何變動時，自動觸發並回傳最新的資料
+    const unsubscribeProfile = onSnapshot(userDocRef, (doc) => {
+      if (doc.exists()) {
+        setUserProfile(doc.data());
       } else {
         setUserProfile(null);
       }
+      // 確保在首次獲取到 profile 資料後，才結束載入狀態
+      if (loading) setLoading(false);
+    }, (error) => {
+      console.error("監聽使用者資料失敗:", error);
       setLoading(false);
     });
-    return unsubscribe;
-  }, []);
+
+    // 清理 profile 監聽器
+    return () => unsubscribeProfile();
+
+  }, [currentUser]); // 這個 effect 會在 currentUser 改變時 (登入/登出) 重新執行
 
   const value = {
     currentUser,
@@ -63,7 +84,6 @@ export function AuthProvider({ children }) {
     signup,
     login,
     logout,
-    refreshUserProfile,
   };
 
   return (

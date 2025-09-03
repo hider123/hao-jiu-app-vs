@@ -15,6 +15,8 @@ export const onNewUserCreate = async (userId, email) => {
       wallet: mockWallet,
       friends: [],
       groups: [],
+      incomingRequests: [], // 新增：收到的好友請求
+      outgoingRequests: [], // 新增：送出的好友請求
       createdAt: new Date(),
     });
   } catch (error) {
@@ -220,13 +222,107 @@ export const addChallenge = async (challengeData) => {
 
 
 // --- Social/Friends Functions ---
-export const addFriend = async (currentUserId, newFriend) => {
-  const userRef = doc(db, "users", currentUserId);
+export const sendFriendRequest = async (sender, receiver) => {
+  const senderRef = doc(db, "users", sender.uid);
+  const receiverRef = doc(db, "users", receiver.id);
+
+  const outgoingRequest = {
+    userId: receiver.id,
+    nickname: receiver.nickname,
+    avatar: receiver.avatar,
+    timestamp: serverTimestamp(),
+  };
+
+  const incomingRequest = {
+    userId: sender.uid,
+    nickname: sender.profile.nickname,
+    avatar: sender.profile.avatar || `https://i.pravatar.cc/80?u=${sender.uid}`,
+    timestamp: serverTimestamp(),
+  };
+
   try {
-    await updateDoc(userRef, { friends: arrayUnion(newFriend) });
+    const batch = writeBatch(db);
+    batch.update(senderRef, { outgoingRequests: arrayUnion(outgoingRequest) });
+    batch.update(receiverRef, { incomingRequests: arrayUnion(incomingRequest) });
+    await batch.commit();
     return true;
   } catch (error) {
-    console.error("新增好友失敗:", error);
+    console.error("發送好友請求失敗:", error);
+    return false;
+  }
+};
+
+export const acceptFriendRequest = async (currentUser, requesterInfo) => {
+  const currentUserRef = doc(db, "users", currentUser.uid);
+  const requesterRef = doc(db, "users", requesterInfo.userId);
+
+  const currentUserAsFriend = {
+    id: currentUser.uid,
+    nickname: currentUser.profile.nickname,
+    avatar: currentUser.profile.avatar || `https://i.pravatar.cc/80?u=${currentUser.uid}`,
+  };
+
+  const requesterAsFriend = {
+    id: requesterInfo.userId,
+    nickname: requesterInfo.nickname,
+    avatar: requesterInfo.avatar,
+  };
+
+  try {
+    await runTransaction(db, async (transaction) => {
+      const currentUserDoc = await transaction.get(currentUserRef);
+      const requesterDoc = await transaction.get(requesterRef);
+      if (!currentUserDoc.exists() || !requesterDoc.exists()) { throw "User document not found!"; }
+      
+      const currentUserData = currentUserDoc.data();
+      const requesterData = requesterDoc.data();
+
+      transaction.update(currentUserRef, { friends: arrayUnion(requesterAsFriend) });
+      transaction.update(requesterRef, { friends: arrayUnion(currentUserAsFriend) });
+      
+      const updatedCurrentUserIncoming = currentUserData.incomingRequests.filter(req => req.userId !== requesterInfo.userId);
+      const updatedRequesterOutgoing = requesterData.outgoingRequests.filter(req => req.userId !== currentUser.uid);
+      
+      transaction.update(currentUserRef, { incomingRequests: updatedCurrentUserIncoming });
+      transaction.update(requesterRef, { outgoingRequests: updatedRequesterOutgoing });
+    });
+    return true;
+  } catch (error) {
+    console.error("接受好友請求失敗:", error);
+    return false;
+  }
+};
+
+export const declineOrCancelFriendRequest = async (currentUserId, otherUserId) => {
+  const currentUserRef = doc(db, "users", currentUserId);
+  const otherUserRef = doc(db, "users", otherUserId);
+
+  try {
+    await runTransaction(db, async (transaction) => {
+      const currentUserDoc = await transaction.get(currentUserRef);
+      const otherUserDoc = await transaction.get(otherUserRef);
+      if (!currentUserDoc.exists() || !otherUserDoc.exists()) { throw "User document not found!"; }
+
+      const currentUserData = currentUserDoc.data();
+      const otherUserData = otherUserDoc.data();
+
+      const updatedCurrentUserIncoming = currentUserData.incomingRequests?.filter(req => req.userId !== otherUserId) || [];
+      const updatedOtherUserOutgoing = otherUserData.outgoingRequests?.filter(req => req.userId !== currentUserId) || [];
+      const updatedCurrentUserOutgoing = currentUserData.outgoingRequests?.filter(req => req.userId !== otherUserId) || [];
+      const updatedOtherUserIncoming = otherUserData.incomingRequests?.filter(req => req.userId !== currentUserId) || [];
+
+      transaction.update(currentUserRef, { 
+        incomingRequests: updatedCurrentUserIncoming,
+        outgoingRequests: updatedCurrentUserOutgoing,
+      });
+      transaction.update(otherUserRef, { 
+        incomingRequests: updatedOtherUserIncoming,
+        outgoingRequests: updatedOtherUserOutgoing,
+      });
+    });
+    return true;
+  } catch (error) {
+    console.error("處理好友請求失敗:", error);
     return false;
   }
 };
@@ -258,7 +354,6 @@ export const sendMessage = async (chatId, messageData) => {
   }
 };
 
-
 // --- Seeding Functions (for one-time setup) ---
 export const seedEventsToFirestore = async () => {
   const eventsCollectionRef = collection(db, 'events');
@@ -274,7 +369,6 @@ export const seedEventsToFirestore = async () => {
   try {
     await batch.commit();
     console.log("✅ 成功！所有模擬活動資料都已上傳。");
-    alert("活動資料庫填充成功！");
   } catch (error) {
     console.error("❗️ 填充活動資料時發生錯誤:", error);
   }
@@ -289,12 +383,11 @@ export const seedChallengesToFirestore = async () => {
   mockChallenges.forEach((challenge) => {
     const docRef = doc(challengesCollectionRef, challenge.id);
     batch.set(docRef, challenge);
-  });
+});
 
   try {
     await batch.commit();
     console.log("✅ 成功！所有模擬挑戰資料都已上傳。");
-    alert("挑戰資料庫填充成功！");
   } catch (error) {
     console.error("❗️ 填充挑戰資料時發生錯誤:", error);
   }
