@@ -1,12 +1,11 @@
 import { db } from './firebaseConfig';
 import { 
   doc, setDoc, getDoc, collection, getDocs, runTransaction, 
-  arrayUnion, updateDoc, serverTimestamp, addDoc, query, orderBy, writeBatch 
+  arrayUnion, updateDoc, serverTimestamp, addDoc, query, orderBy, writeBatch, deleteDoc 
 } from 'firebase/firestore';
 import { mockProfile, mockWallet, mockChats } from './data/mockData'; 
 
 // --- User Functions ---
-
 export const onNewUserCreate = async (userId, email) => {
   const userRef = doc(db, 'users', userId);
   try {
@@ -18,7 +17,6 @@ export const onNewUserCreate = async (userId, email) => {
       groups: [],
       createdAt: new Date(),
     });
-    console.log("新使用者資料已在 Firestore 中建立！");
   } catch (error) {
     console.error("在 Firestore 中建立使用者資料失敗:", error);
   }
@@ -44,7 +42,6 @@ export const updateUserProfile = async (userId, profileData) => {
     await updateDoc(userRef, {
       profile: profileData
     });
-    console.log(`成功更新使用者 ${userId} 的個人資料！`);
     return true;
   } catch (error) {
     console.error("更新個人資料失敗:", error);
@@ -52,9 +49,23 @@ export const updateUserProfile = async (userId, profileData) => {
   }
 };
 
+export const getAllUsers = async () => {
+  const usersCollectionRef = collection(db, 'users');
+  try {
+    const querySnapshot = await getDocs(usersCollectionRef);
+    const users = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    return users;
+  } catch (error) {
+    console.error("獲取所有使用者列表失敗:", error);
+    return [];
+  }
+};
+
 
 // --- Event Functions ---
-
 export const getEventById = async (eventId) => {
   const eventRef = doc(db, "events", eventId);
   try {
@@ -62,7 +73,6 @@ export const getEventById = async (eventId) => {
     if (docSnap.exists()) {
       return { id: docSnap.id, ...docSnap.data() };
     }
-    console.warn(`在 Firestore 中找不到該活動文件！ ID: ${eventId}`);
     return null;
   } catch (error) {
     console.error("獲取單一活動失敗:", error);
@@ -76,7 +86,6 @@ export const updateEventResponse = async (eventId, userId, userNickname, respons
     return await runTransaction(db, async (transaction) => {
       const eventDoc = await transaction.get(eventRef);
       if (!eventDoc.exists()) { throw "活動文件不存在！"; }
-      
       const data = eventDoc.data();
       const newResponders = { ...(data.responders || {}) };
       const newResponses = { ...(data.responses || { wantToGo: 0, interested: 0, cantGo: 0 }) };
@@ -113,9 +122,20 @@ export const addEvent = async (eventData) => {
   }
 };
 
+export const deleteEvent = async (eventId) => {
+  const eventRef = doc(db, "events", eventId);
+  try {
+    await deleteDoc(eventRef);
+    return true;
+  } catch (error)
+  {
+    console.error("刪除活動失敗:", error);
+    return false;
+  }
+};
+
 
 // --- Challenge Functions ---
-
 export const getChallengeById = async (challengeId) => {
   const challengeRef = doc(db, "challenges", challengeId);
   try {
@@ -123,7 +143,6 @@ export const getChallengeById = async (challengeId) => {
     if (docSnap.exists()) {
       return { id: docSnap.id, ...docSnap.data() };
     }
-    console.warn(`在 Firestore 中找不到該挑戰文件！ ID: ${challengeId}`);
     return null;
   } catch (error) {
     console.error("獲取單一挑戰失敗:", error);
@@ -201,7 +220,6 @@ export const addChallenge = async (challengeData) => {
 
 
 // --- Social/Friends Functions ---
-
 export const addFriend = async (currentUserId, newFriend) => {
   const userRef = doc(db, "users", currentUserId);
   try {
@@ -226,7 +244,6 @@ export const createGroup = async (currentUserId, newGroup) => {
 
 
 // --- Chat Functions ---
-
 export const sendMessage = async (chatId, messageData) => {
   const messagesCollectionRef = collection(db, "chats", chatId, "messages");
   try {
@@ -241,8 +258,8 @@ export const sendMessage = async (chatId, messageData) => {
   }
 };
 
-// --- Seeding Functions (for one-time setup) ---
 
+// --- Seeding Functions (for one-time setup) ---
 export const seedEventsToFirestore = async () => {
   const eventsCollectionRef = collection(db, 'events');
   console.log("準備開始填充活動資料到 Firestore...");

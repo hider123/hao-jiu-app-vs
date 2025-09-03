@@ -14,7 +14,6 @@ export function AuthProvider({ children }) {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // --- 1. 新增手動刷新使用者資料的函式 ---
   const refreshUserProfile = useCallback(async () => {
     if (currentUser) {
       const profile = await getUserProfile(currentUser.uid);
@@ -26,11 +25,14 @@ export function AuthProvider({ children }) {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     if (userCredential.user) {
       await onNewUserCreate(userCredential.user.uid, email);
-      await refreshUserProfile(); // 註冊後也刷新一次
+      // The onAuthStateChanged listener will handle fetching the profile
     }
     return userCredential;
   }
 
+  // --- 關鍵修正：簡化 login 函式 ---
+  // login 的職責只剩下登入，不再需要手動獲取 profile。
+  // 這樣可以確保所有 profile 的更新都來自同一個來源 (onAuthStateChanged)，避免衝突。
   function login(email, password) {
     return signInWithEmailAndPassword(auth, email, password);
   }
@@ -61,7 +63,7 @@ export function AuthProvider({ children }) {
     signup,
     login,
     logout,
-    refreshUserProfile, // --- 2. 將刷新函式也傳遞下去 ---
+    refreshUserProfile,
   };
 
   return (
