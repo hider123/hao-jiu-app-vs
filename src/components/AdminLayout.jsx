@@ -1,9 +1,9 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { UsersIcon } from './Icons';
+import { UsersIcon, TrophyIcon } from './Icons';
 
-// 為了之後擴充，先在此定義日曆圖示
+// 簡單內嵌的日曆圖示
 const CalendarIcon = ({ className = 'w-4 h-4' }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -53,7 +53,10 @@ export default function AdminLayout() {
                 <CalendarIcon />
                 活動管理
               </NavLink>
-              {/* 之後可以加入挑戰管理等 */}
+              <NavLink to="/admin/challenges" className={getLinkClass}>
+                <TrophyIcon className="h-4 w-4" />
+                挑戰管理
+              </NavLink>
             </nav>
           </div>
           <div className="mt-auto p-4 border-t">

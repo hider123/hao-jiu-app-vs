@@ -21,6 +21,7 @@ import ChatPage from './pages/ChatPage';
 // Admin Pages
 import AdminUsersPage from './pages/admin/AdminUsersPage';
 import AdminEventsPage from './pages/admin/AdminEventsPage';
+import AdminChallengesPage from './pages/admin/AdminChallengesPage';
 import AdminLoginPage from './pages/admin/AdminLoginPage';
 
 // Public Pages
@@ -42,7 +43,6 @@ function ProtectedRoute({ children }) {
 function AdminRoute({ children }) {
   const { currentUser, userProfile, loading } = useAuth();
 
-  // --- 關鍵修正：在進行任何判斷前，先等待 loading 結束 ---
   if (loading) { 
     return (
       <div className="flex justify-center items-center h-screen">
@@ -51,10 +51,8 @@ function AdminRoute({ children }) {
     ); 
   }
   
-  // 當 loading 結束後，我們就可以安全地進行判斷
-  // 這確保了 userProfile 已經是從 Firebase 來的最終版本
-  // 我們同時檢查您設定的兩種 role 位置，讓程式碼更穩固
-  if (!currentUser || (userProfile?.role !== 'admin' && userProfile?.profile?.role !== 'admin')) { 
+  // 檢查 role 是否為 'admin'
+  if (!currentUser || userProfile?.role !== 'admin') { 
     return <Navigate to="/admin/login" replace />; 
   }
   return children;
@@ -67,7 +65,16 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* --- 主要 App 路由 (給一般使用者) --- */}
+        {/* --- 1. 管理後台路由 (高優先級) --- */}
+        <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+            <Route index element={<Navigate to="users" replace />} /> 
+            <Route path="users" element={<AdminUsersPage />} />
+            <Route path="events" element={<AdminEventsPage />} />
+            <Route path="challenges" element={<AdminChallengesPage />} />
+        </Route>
+
+        {/* --- 2. 主要 App 路由 (給一般使用者) --- */}
         <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>} >
           <Route index element={<HomePage />} />
           <Route path="map" element={<MapPage />} />
@@ -76,15 +83,7 @@ function App() {
           <Route path="profile" element={<ProfilePage />} />
         </Route>
         
-        {/* --- 管理後台路由 --- */}
-        <Route path="/admin/login" element={<AdminLoginPage />} />
-        <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
-            <Route index element={<Navigate to="users" replace />} /> 
-            <Route path="users" element={<AdminUsersPage />} />
-            <Route path="events" element={<AdminEventsPage />} />
-        </Route>
-
-        {/* --- 獨立的、受保護的頁面 --- */}
+        {/* --- 3. 獨立的、受保護的頁面 --- */}
         <Route path="/event/:eventId" element={<ProtectedRoute><EventDetailPage /></ProtectedRoute>} />
         <Route path="/event/:eventId/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
         <Route path="/challenge/:challengeId" element={<ProtectedRoute><ChallengeDetailPage /></ProtectedRoute>} />
@@ -92,7 +91,7 @@ function App() {
         <Route path="/create-challenge" element={<ProtectedRoute><CreateChallengePage /></ProtectedRoute>} />
         <Route path="/profile/edit" element={<ProtectedRoute><EditProfilePage /></ProtectedRoute>} />
 
-        {/* --- 無需登入的頁面 --- */}
+        {/* --- 4. 公開和 fallback 路由 (最低優先級) --- */}
         <Route path="/login" element={currentUser ? <Navigate to="/" /> : <AuthPage />} />
         <Route path="/404" element={<NotFoundPage />} />
         <Route path="*" element={<Navigate to="/404" replace />} />

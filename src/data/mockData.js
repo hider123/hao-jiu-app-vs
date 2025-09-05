@@ -12,7 +12,10 @@ thisSaturday.setHours(19, 0, 0, 0);
 const nextWeek = new Date(today);
 nextWeek.setDate(today.getDate() + 7);
 
-// --- 聊天室模擬資料 ---
+// --- 應用程式常數 ---
+export const CATEGORIES = ["美食", "電影", "運動", "桌遊", "戶外", "科技", "藝文", "其他"];
+
+// --- 模擬資料 ---
 export const mockChats = {
     'event-1': [
         { id: 'msg1', senderId: 'creator-user-1', senderName: '電影迷', text: '大家好！很期待這次的電影！', timestamp: new Date(Date.now() - 3600000 * 2) },
@@ -55,7 +58,6 @@ export const mockGroups = [
     { id: 'group-1', name: '羽球好咖', members: ['friend-1', 'friend-3'] }
 ];
 
-// --- 完整的挑戰列表 ---
 export const mockChallenges = [
     {
         id: 'challenge-1',
@@ -70,10 +72,7 @@ export const mockChallenges = [
             { id: 'tp-2', name: '駁二 - 文創水果茶', clue: '望著海的巨大白色貓咪附近，有著最新鮮的清涼滋味。', status: 'locked', lat: 22.623, lng: 120.284, submission: null },
             { id: 'tp-3', name: '旗津 - 手工粉圓冰', clue: '搭上渡輪，在熱鬧的老街上尋找那碗最消暑的古早味。', status: 'locked', lat: 22.613, lng: 120.268, submission: null },
         ],
-        team: [
-            { id: 'mock-user-123456789', nickname: '模擬使用者', avatar: 'https://i.pravatar.cc/80?u=f' },
-            { id: 'friend-1', nickname: '王小明', avatar: 'https://i.pravatar.cc/80?u=a' },
-        ]
+        team: []
     },
     {
         id: 'challenge-2',
@@ -95,7 +94,7 @@ export const mockChallenges = [
         title: '旗津日落美食馬拉松',
         description: '從旗津渡輪站出發，一路向著夕陽前進，完成指定的美食任務，最後在沙灘上欣賞絕美日落！',
         reward: '海產店 500 元折價券',
-        eventTimestamp: new Date('2025-08-23T18:30:00').toISOString(), // An expired one for testing
+        eventTimestamp: new Date('2025-08-23T18:30:00').toISOString(),
         imageUrl: 'https://images.unsplash.com/photo-1617501333948-e878b2e1e03a?q=80&w=800&auto=format&fit=crop',
         treasurePoints: [
             { id: 'tp-c1', name: '旗津老街 - 烤小卷', clue: '海的鮮味，炭火的香氣，是這條街最誘人的味道。', status: 'locked', lat: 22.613, lng: 120.268, submission: null },
@@ -108,6 +107,11 @@ export const mockChallenges = [
 const mockEvents = [
     { id: '1', title: '一起去看新上映的科幻電影', imageUrl: 'https://images.unsplash.com/photo-1574267432553-4b4628081c31?q=80&w=800&auto=format&fit=crop', description: '聽說特效超讚，找個伴一起去！', category: '電影', eventType: 'in-person', location: '高雄大遠百威秀', city: '高雄市', lat: 22.611, lng: 120.300, eventTimestamp: new Date('2025-08-24T20:00:00').toISOString(), creator: '電影迷', creatorId: 'creator-user-1', creatorVerified: true, responses: { wantToGo: 5, interested: 8, cantGo: 1 }, responders: {'mock-user-123456789': { response: 'wantToGo', nickname: '模擬使用者'}, 'creator-user-1': { response: 'wantToGo', nickname: '電影迷' } } },
     { id: '2', title: '線上讀書會：原子習慣', imageUrl: 'https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=800&auto=format&fit=crop', description: '一起來討論書中的觀點，分享彼此的心得。', category: '藝文', eventType: 'online', city: '線上', onlineLink: 'https://meet.google.com/xyz', eventTimestamp: new Date('2025-08-25T14:00:00').toISOString(), creator: '小書僮', creatorId: 'creator-user-2', creatorVerified: false, responses: { wantToGo: 12, interested: 15, cantGo: 3 }, responders: {'mock-user-123456789': { response: 'interested', nickname: '模擬使用者'}} },
+    { id: '3', title: '駁二碼頭倉庫攝影團', imageUrl: 'https://images.unsplash.com/photo-1598972111535-643190a6e2e2?q=80&w=800&auto=format&fit=crop', description: '地點在駁二藝術特區，一起來練習街拍！', category: '戶外', eventType: 'in-person', location: '駁二藝術特區', city: '高雄市', lat: 22.622, lng: 120.283, eventTimestamp: thisSaturday.toISOString(), creator: '攝影咖', creatorId: 'creator-user-3', creatorVerified: true, responses: { wantToGo: 7, interested: 10, cantGo: 2 }, responders: {} },
+    { id: '4', title: '夢時代週末桌遊團', imageUrl: 'https://images.unsplash.com/photo-1585502332545-39ac35c83438?q=80&w=800&auto=format&fit=crop', description: '新手友善，會教學，一起來玩阿瓦隆！', category: '桌遊', eventType: 'in-person', location: '夢時代誠品', city: '高雄市', lat: 22.595, lng: 120.306, eventTimestamp: new Date('2025-08-24T15:00:00').toISOString(), creator: '桌遊控', creatorId: 'creator-user-4', creatorVerified: false, responses: { wantToGo: 9, interested: 4, cantGo: 0 }, responders: {} },
+    { id: '5', title: '台南古蹟美食一日遊', imageUrl: 'https://images.unsplash.com/photo-1522613614648-2f7c78408a2a?q=80&w=800&auto=format&fit=crop', description: '從安平古堡吃到國華街！', category: '美食', eventType: 'in-person', location: '安平古堡', city: '台南市', lat: 22.999, lng: 120.164, eventTimestamp: new Date('2025-08-25T09:00:00').toISOString(), creator: '吃貨龍', creatorId: 'creator-user-5', creatorVerified: true, responses: { wantToGo: 15, interested: 20, cantGo: 4 }, responders: {} },
+    { id: '6', title: '台中爵士音樂節揪團', imageUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=800&auto=format&fit=crop', description: '一起在草地上享受美好的音樂吧！', category: '藝文', eventType: 'in-person', location: '台中市民廣場', city: '台中市', lat: 24.150, lng: 120.665, eventTimestamp: nextWeek.toISOString(), creator: '音樂人', creatorId: 'creator-user-6', creatorVerified: true, responses: { wantToGo: 25, interested: 30, cantGo: 5 }, responders: {} },
+    { id: '7', title: '今日限定！快閃咖啡廳', imageUrl: 'https://images.unsplash.com/photo-1511920183276-5941b5a5c533?q=80&w=800&auto=format&fit=crop', description: '手沖單品咖啡買一送一，只到今天！', category: '美食', eventType: 'in-person', location: '鹽埕區 Gien Jia 挑食', city: '高雄市', lat: 22.625, lng: 120.280, eventTimestamp: new Date('2025-08-24T11:00:00').toISOString(), creator: '咖啡師', creatorId: 'creator-user-7', creatorVerified: false, responses: { wantToGo: 8, interested: 12, cantGo: 0 }, responders: {} },
 ];
 
 export default mockEvents;

@@ -15,8 +15,8 @@ export const onNewUserCreate = async (userId, email) => {
       wallet: mockWallet,
       friends: [],
       groups: [],
-      incomingRequests: [], // 新增：收到的好友請求
-      outgoingRequests: [], // 新增：送出的好友請求
+      incomingRequests: [],
+      outgoingRequests: [],
       createdAt: new Date(),
     });
   } catch (error) {
@@ -220,6 +220,18 @@ export const addChallenge = async (challengeData) => {
   }
 };
 
+export const deleteChallenge = async (challengeId) => {
+  const challengeRef = doc(db, "challenges", challengeId);
+  try {
+    await deleteDoc(challengeRef);
+    return true;
+  } catch (error)
+  {
+    console.error("刪除挑戰失敗:", error);
+    return false;
+  }
+};
+
 
 // --- Social/Friends Functions ---
 export const sendFriendRequest = async (sender, receiver) => {
@@ -245,6 +257,15 @@ export const sendFriendRequest = async (sender, receiver) => {
     batch.update(senderRef, { outgoingRequests: arrayUnion(outgoingRequest) });
     batch.update(receiverRef, { incomingRequests: arrayUnion(incomingRequest) });
     await batch.commit();
+    
+    // Create notification for receiver
+    await addDoc(collection(db, 'users', receiver.id, 'notifications'), {
+      message: `${sender.profile.nickname} 向您發送了好友請求。`,
+      link: '/friends',
+      read: false,
+      timestamp: serverTimestamp(),
+    });
+
     return true;
   } catch (error) {
     console.error("發送好友請求失敗:", error);
@@ -357,10 +378,9 @@ export const sendMessage = async (chatId, messageData) => {
 // --- Seeding Functions (for one-time setup) ---
 export const seedEventsToFirestore = async () => {
   const eventsCollectionRef = collection(db, 'events');
-  console.log("準備開始填充活動資料到 Firestore...");
-  const batch = writeBatch(db);
   const { default: mockEvents } = await import('./data/mockData.js');
-
+  
+  const batch = writeBatch(db);
   mockEvents.forEach((event) => {
     const docRef = doc(eventsCollectionRef, event.id); 
     batch.set(docRef, event);
@@ -376,14 +396,13 @@ export const seedEventsToFirestore = async () => {
 
 export const seedChallengesToFirestore = async () => {
   const challengesCollectionRef = collection(db, 'challenges');
-  console.log("準備開始填充挑戰資料到 Firestore...");
-  const batch = writeBatch(db);
   const { mockChallenges } = await import('./data/mockData.js');
-
+  
+  const batch = writeBatch(db);
   mockChallenges.forEach((challenge) => {
     const docRef = doc(challengesCollectionRef, challenge.id);
     batch.set(docRef, challenge);
-});
+  });
 
   try {
     await batch.commit();
@@ -394,7 +413,6 @@ export const seedChallengesToFirestore = async () => {
 };
 
 export const seedChatsToFirestore = async () => {
-  console.log("準備開始填充聊天資料...");
   const batch = writeBatch(db);
   
   for (const chatId in mockChats) {

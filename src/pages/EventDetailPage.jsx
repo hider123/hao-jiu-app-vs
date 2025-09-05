@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getEventById, updateEventResponse } from '../firebaseService';
-import { BackIcon } from '../components/Icons';
+import { BackIcon, SparklesIcon } from '../components/Icons';
+import MatchmakingModal from '../components/MatchmakingModal';
 
 // 倒數計時器元件
 const CountdownTimer = ({ targetDate }) => {
@@ -70,6 +71,7 @@ export default function EventDetailPage() {
 
     const [event, setEvent] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isMatchmakingModalOpen, setMatchmakingModalOpen] = useState(false);
 
     useEffect(() => {
         const fetchEvent = async () => {
@@ -85,9 +87,9 @@ export default function EventDetailPage() {
     const handleResponse = useCallback(async (responseType) => {
         if (!event || !currentUser || !userProfile?.profile) return;
 
-        // 樂觀更新：立即更新 UI，讓使用者感覺反應迅速
-        const originalEvent = { ...event };
-        const newEvent = { ...originalEvent };
+        const originalEvent = JSON.parse(JSON.stringify(event));
+        const newEvent = JSON.parse(JSON.stringify(event));
+        
         const oldResponse = newEvent.responders?.[currentUser.uid]?.response;
 
         if (oldResponse) {
@@ -101,7 +103,6 @@ export default function EventDetailPage() {
         }
         setEvent(newEvent);
 
-        // 實際與後端溝通
         const updatedEventData = await updateEventResponse(
             event.id,
             currentUser.uid,
@@ -109,7 +110,6 @@ export default function EventDetailPage() {
             responseType
         );
 
-        // 如果後端更新失敗，則恢復到原始狀態
         if (!updatedEventData) {
             setEvent(originalEvent);
             alert("更新回應失敗，請稍後再試。");
@@ -124,7 +124,9 @@ export default function EventDetailPage() {
         return <div className="p-8 text-center">找不到該活動！</div>;
     }
     
-    const userResponse = event?.responders?.[currentUser?.uid]?.response;
+    // 為可能不存在的資料提供預設值，確保頁面穩固
+    const responses = event.responses || { wantToGo: 0, interested: 0, cantGo: 0 };
+    const userResponse = event.responders?.[currentUser?.uid]?.response;
     
     const getButtonClass = (responseType) => {
         const baseClass = "flex-1 py-3 px-2 text-sm font-semibold rounded-lg transition-all duration-200 transform";
@@ -140,6 +142,7 @@ export default function EventDetailPage() {
     };
 
     return (
+      <>
         <div className="bg-slate-50 min-h-screen flex flex-col">
             <header className="p-4 bg-white/95 backdrop-blur-sm border-b flex items-center flex-shrink-0 sticky top-0 z-10">
                 <button onClick={() => navigate(-1)} className="mr-4 text-gray-600 hover:text-indigo-600">
@@ -179,15 +182,35 @@ export default function EventDetailPage() {
                             </button>
                         </div>
                     )}
+
+                    {!userResponse && (
+                        <div className="mb-4">
+                            <button 
+                                onClick={() => setMatchmakingModalOpen(true)}
+                                className="w-full py-3 px-4 bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transition-all flex items-center justify-center space-x-2"
+                            >
+                                <SparklesIcon />
+                                <span>AI 幫我找伴</span>
+                            </button>
+                        </div>
+                    )}
+                    
                     <p className="text-center font-semibold text-gray-700 mb-3">您的意願是？</p>
                     <div className="flex justify-around space-x-2 sm:space-x-3">
-                        <button onClick={() => handleResponse('wantToGo')} className={getButtonClass('wantToGo')}>想去 ({event.responses.wantToGo})</button>
-                        <button onClick={() => handleResponse('interested')} className={getButtonClass('interested')}>有興趣 ({event.responses.interested})</button>
-                        <button onClick={() => handleResponse('cantGo')} className={getButtonClass('cantGo')}>沒辦法 ({event.responses.cantGo})</button>
+                        <button onClick={() => handleResponse('wantToGo')} className={getButtonClass('wantToGo')}>想去 ({responses.wantToGo})</button>
+                        <button onClick={() => handleResponse('interested')} className={getButtonClass('interested')}>有興趣 ({responses.interested})</button>
+                        <button onClick={() => handleResponse('cantGo')} className={getButtonClass('cantGo')}>沒辦法 ({responses.cantGo})</button>
                     </div>
                 </div>
             </main>
         </div>
+        
+        <MatchmakingModal 
+            isOpen={isMatchmakingModalOpen}
+            onClose={() => setMatchmakingModalOpen(false)}
+            event={event}
+        />
+      </>
     );
 }
 

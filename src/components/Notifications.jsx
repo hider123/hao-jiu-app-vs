@@ -1,16 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BellIcon } from './Icons';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext'; // 引入 useAuth 來獲取真實資料
+import { db } from '../firebaseConfig'; // 引入 db 以便更新文件
+import { doc, updateDoc } from 'firebase/firestore'; // 引入更新文件的函式
+import { BellIcon } from './Icons';
 
-// 模擬的通知資料，用於前端 UI 開發
-const mockNotifications = [
-    { id: 1, type: 'event', message: '王小明 回應了您的活動「駁二攝影團」', link: '/event/3', read: false },
-    { id: 2, type: 'challenge', message: '您已成功加入挑戰「夏日港都飲品大挑戰」', link: '/challenge/challenge-1', read: false },
-    { id: 3, type: 'event', message: '您建立的活動「一起去看新上映的科幻電影」即將在 1 小時後開始！', link: '/event/1', read: true },
-    { id: 4, type: 'system', message: '歡迎加入「好揪」！快來探索您附近的精彩活動吧！', link: '/', read: true },
-];
-
-// 通知列表的下拉式選單元件
+// 通知列表的下拉式選單元件 (保持不變)
 const NotificationDropdown = ({ notifications, onNotificationClick }) => {
     return (
         <div className="absolute top-full right-0 mt-2 w-80 sm:w-96 bg-white rounded-xl shadow-lg border z-50">
@@ -38,10 +33,12 @@ const NotificationDropdown = ({ notifications, onNotificationClick }) => {
 // 鈴鐺圖示與主邏輯元件
 export default function NotificationBell() {
     const [isOpen, setIsOpen] = useState(false);
-    const [notifications, setNotifications] = useState(mockNotifications);
+    // --- 1. 從 Context 獲取真實的 notifications 和 currentUser ---
+    const { currentUser, notifications } = useAuth(); 
     const dropdownRef = useRef(null);
     const navigate = useNavigate();
 
+    // 計算未讀通知的數量
     const unreadCount = notifications.filter(n => !n.read).length;
 
     // 點擊鈴鐺以外的地方，關閉下拉選單
@@ -55,12 +52,20 @@ export default function NotificationBell() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [dropdownRef]);
 
-    const handleNotificationClick = (notification) => {
-        // 將通知標示為已讀
-        setNotifications(prev => 
-            prev.map(n => n.id === notification.id ? { ...n, read: true } : n)
-        );
-        // 關閉下拉選單並跳轉
+    // 點擊通知時的處理函式
+    const handleNotificationClick = async (notification) => {
+        // --- 2. 將通知在 Firestore 中標示為已讀 ---
+        // 只有在通知是未讀狀態時才執行更新
+        if (currentUser && !notification.read) {
+            const notifRef = doc(db, 'users', currentUser.uid, 'notifications', notification.id);
+            try {
+                await updateDoc(notifRef, { read: true });
+            } catch (error) {
+                console.error("更新通知狀態失敗:", error);
+            }
+        }
+        
+        // 關閉下拉選單並跳轉到對應連結
         setIsOpen(false);
         navigate(notification.link);
     };
