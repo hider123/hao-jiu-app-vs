@@ -4,21 +4,28 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>好揪 (Hao Jiu) App</title>
+    <title>好揪 (Hao Jiu App)</title>
     
-    <!-- 為了讓地圖頁面能正確顯示，我們在這裡引入 Leaflet 的 CSS -->
+    <!-- Leaflet 地圖函式庫的 CSS 樣式表 -->
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
       crossorigin=""
     />
+    
+    <!-- QR Code 生成函式庫 -->
+    <script 
+      src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" 
+      xintegrity="sha512-ZDSPMaY72ZkYSpzHCo2n3AeZx5ptKPPAqy2b_1K3b3lZgMyNsdBkvzBfCIKxNY8ShEDe1rWH0PqC/6oLaY9gVg==" 
+      crossorigin="anonymous" 
+      referrerpolicy="no-referrer"
+    ></script>
+
   </head>
   <body>
-    <!-- React 應用程式將會被掛載到這個 div 中 -->
     <div id="root"></div>
-    
-    <!-- Vite 會將所有 JavaScript 程式碼打包並從這裡載入 -->
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
+

@@ -1,3 +1,4 @@
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 
@@ -14,8 +15,10 @@ import ProfilePage from './pages/ProfilePage';
 import EventDetailPage from './pages/EventDetailPage';
 import ChallengeDetailPage from './pages/ChallengeDetailPage';
 import CreateEventPage from './pages/CreateEventPage';
+import EventPreviewPage from './pages/EventPreviewPage';
 import CreateChallengePage from './pages/CreateChallengePage';
 import EditProfilePage from './pages/EditProfilePage';
+import EditEventPage from './pages/EditEventPage';
 import ChatPage from './pages/ChatPage';
 
 // Admin Pages
@@ -51,8 +54,7 @@ function AdminRoute({ children }) {
     ); 
   }
   
-  // 檢查 role 是否為 'admin'
-  if (!currentUser || userProfile?.role !== 'admin') { 
+  if (!currentUser || (userProfile?.role !== 'admin' && userProfile?.profile?.role !== 'admin')) { 
     return <Navigate to="/admin/login" replace />; 
   }
   return children;
@@ -86,8 +88,10 @@ function App() {
         {/* --- 3. 獨立的、受保護的頁面 --- */}
         <Route path="/event/:eventId" element={<ProtectedRoute><EventDetailPage /></ProtectedRoute>} />
         <Route path="/event/:eventId/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
+        <Route path="/event/:eventId/edit" element={<ProtectedRoute><EditEventPage /></ProtectedRoute>} />
         <Route path="/challenge/:challengeId" element={<ProtectedRoute><ChallengeDetailPage /></ProtectedRoute>} />
         <Route path="/create-event" element={<ProtectedRoute><CreateEventPage /></ProtectedRoute>} />
+        <Route path="/create-event/preview" element={<ProtectedRoute><EventPreviewPage /></ProtectedRoute>} />
         <Route path="/create-challenge" element={<ProtectedRoute><CreateChallengePage /></ProtectedRoute>} />
         <Route path="/profile/edit" element={<ProtectedRoute><EditProfilePage /></ProtectedRoute>} />
 
