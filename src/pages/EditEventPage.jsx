@@ -74,7 +74,11 @@ export default function EditEventPage() {
       const storageUrl = await uploadImageAndGetURL(base64Data, currentUser.uid);
       if (storageUrl) {
         setFormData(prev => ({ ...prev, imageUrl: storageUrl }));
+      } else {
+        alert("圖片上傳失敗，請稍後再試。");
       }
+    } else {
+        alert("AI 圖片生成失敗，請稍後再試。");
     }
     setIsGeneratingImage(false);
   }, [formData, currentUser]);
@@ -84,7 +88,6 @@ export default function EditEventPage() {
     setIsSaving(true);
     const eventTimestamp = new Date(`${formData.eventDate}T${formData.eventTime}`).toISOString();
     
-    // 只挑選我們可以讓使用者編輯的欄位進行更新
     const dataToUpdate = {
       title: formData.title,
       description: formData.description,

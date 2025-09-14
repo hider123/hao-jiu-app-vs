@@ -8,6 +8,7 @@ export default function EventPreviewPage() {
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   
+  // 從上一個頁面 (CreateEventPage) 透過 state 傳遞過來的活動資料
   const eventData = location.state?.eventData;
 
   const handlePublish = useCallback(async () => {
@@ -23,6 +24,7 @@ export default function EventPreviewPage() {
     }
   }, [eventData, navigate]);
 
+  // 如果因為某些原因（例如重新整理頁面）導致預覽資料遺失，顯示提示
   if (!eventData) {
     return (
       <div className="fixed inset-0 bg-slate-100 flex flex-col items-center justify-center p-8 text-center">
@@ -50,7 +52,6 @@ export default function EventPreviewPage() {
 
       <main className="flex-grow overflow-y-auto">
         <div className="bg-white">
-          {/* --- 關鍵修正：改用 <img> 標籤來顯示圖片 --- */}
           <div className="relative h-56 bg-slate-200">
             {eventData.imageUrl ? (
               <img 

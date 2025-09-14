@@ -2,11 +2,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getEventById, updateEventResponse } from '../firebaseService';
-import { BackIcon, SparklesIcon, TicketIcon, EditIcon, UsersIcon } from '../components/Icons';
+import { BackIcon, SparklesIcon, TicketIcon, EditIcon, UsersIcon, CalendarIcon, ClockIcon, LocationIcon, GlobeIcon } from '../components/Icons';
 import MatchmakingModal from '../components/MatchmakingModal';
 import EventTicketModal from '../components/EventTicketModal';
+import ParticipantListModal from '../components/ParticipantListModal';
 
-// 倒數計時器元件
+// 倒數計時器元件 (樣式優化)
 const CountdownTimer = ({ targetDate }) => {
     const calculateTimeLeft = useCallback(() => {
         const difference = +new Date(targetDate) - +new Date();
@@ -16,7 +17,6 @@ const CountdownTimer = ({ targetDate }) => {
                 days: Math.floor(difference / (1000 * 60 * 60 * 24)),
                 hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
                 minutes: Math.floor((difference / 1000 / 60) % 60),
-                seconds: Math.floor((difference / 1000) % 60),
             };
         }
         return timeLeft;
@@ -25,58 +25,64 @@ const CountdownTimer = ({ targetDate }) => {
     const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            setTimeLeft(calculateTimeLeft());
-        }, 1000);
+        const timer = setTimeout(() => { setTimeLeft(calculateTimeLeft()); }, 1000 * 60); // 每分鐘更新一次即可
         return () => clearTimeout(timer);
     });
 
-    const { days, hours, minutes, seconds } = timeLeft;
-    const hasTimeLeft = typeof seconds !== 'undefined';
+    if (Object.keys(timeLeft).length === 0) {
+        return <div className="text-center text-lg text-rose-600 font-bold p-4 bg-rose-50 rounded-lg">活動已結束</div>;
+    }
 
     return (
-        <div className="my-4 p-4 bg-slate-50 rounded-xl border">
-            {hasTimeLeft ? (
-                <div className="flex justify-around items-baseline text-slate-700">
-                    {days > 0 && (
-                        <div className="text-center">
-                            <span className="text-3xl font-bold text-blue-800">{days}</span>
-                            <div className="text-xs">天</div>
-                        </div>
-                    )}
-                    <div className="text-center">
-                        <span className="text-3xl font-bold text-blue-800">{hours < 10 ? `0${hours}` : hours}</span>
-                        <div className="text-xs">時</div>
-                    </div>
-                    <div className="text-center">
-                        <span className="text-3xl font-bold text-blue-800">{minutes < 10 ? `0${minutes}` : minutes}</span>
-                        <div className="text-xs">分</div>
-                    </div>
-                    <div className="text-center">
-                        <span className="text-3xl font-bold text-blue-800">{seconds < 10 ? `0${seconds}` : seconds}</span>
-                        <div className="text-xs">秒</div>
-                    </div>
+        <div className="grid grid-cols-3 gap-4 text-center">
+            {timeLeft.days > 0 && (
+                <div>
+                    <span className="text-4xl font-bold text-blue-800">{timeLeft.days}</span>
+                    <div className="text-sm text-slate-500">天</div>
                 </div>
-            ) : (
-                <div className="text-center text-rose-500 font-semibold py-2">活動已結束</div>
             )}
+            <div>
+                <span className="text-4xl font-bold text-blue-800">{timeLeft.hours < 10 ? `0${timeLeft.hours}` : timeLeft.hours}</span>
+                <div className="text-sm text-slate-500">時</div>
+            </div>
+            <div>
+                <span className="text-4xl font-bold text-blue-800">{timeLeft.minutes < 10 ? `0${timeLeft.minutes}` : timeLeft.minutes}</span>
+                <div className="text-sm text-slate-500">分</div>
+            </div>
         </div>
     );
 };
 
+// 資訊項目子元件
+const InfoItem = ({ icon, label, children }) => (
+    <div className="flex items-start gap-3">
+        <div className="flex-shrink-0 text-slate-500">{icon}</div>
+        <div>
+            <p className="text-sm font-semibold text-slate-500">{label}</p>
+            <p className="text-base font-medium text-slate-800">{children}</p>
+        </div>
+    </div>
+);
+
 // 主辦人控制面板元件
-const CreatorPanel = ({ event, navigate }) => {
+const CreatorPanel = ({ event, navigate, onShowParticipants }) => {
     const participants = Object.values(event.responders || {}).filter(r => r.response === 'wantToGo');
     return (
-        <div className="bg-blue-50 border-t-4 border-blue-500 p-6 rounded-b-2xl shadow-inner space-y-4">
-            <h3 className="font-bold text-lg text-blue-800">主辦人控制面板</h3>
-            <div className="flex items-center gap-2 text-slate-700">
-                <UsersIcon className="w-5 h-5" />
-                <span>目前有 <strong>{participants.length}</strong> 人報名參加</span>
-            </div>
+        <div className="bg-indigo-50 border-t-4 border-indigo-500 p-6 rounded-b-2xl shadow-inner space-y-4">
+            <h3 className="font-bold text-lg text-indigo-800">主辦人控制面板</h3>
+            <button 
+              onClick={onShowParticipants}
+              className="w-full text-left flex items-center gap-3 text-slate-700 p-3 rounded-lg hover:bg-indigo-100 transition"
+            >
+                <UsersIcon className="w-6 h-6 text-indigo-700" />
+                <div>
+                    <p className="font-semibold">目前有 {participants.length} 人報名</p>
+                    <p className="text-xs text-slate-500">點擊查看完整名單</p>
+                </div>
+            </button>
             <button 
                 onClick={() => navigate(`/event/${event.id}/edit`)}
-                className="w-full py-3 px-4 bg-slate-600 text-white font-bold rounded-lg hover:bg-slate-700 transition shadow-sm flex items-center justify-center gap-2"
+                className="w-full py-3 px-4 bg-slate-700 text-white font-bold rounded-lg hover:bg-slate-800 transition shadow-sm flex items-center justify-center gap-2"
             >
                 <EditIcon className="w-5 h-5" />
                 編輯活動
@@ -88,7 +94,7 @@ const CreatorPanel = ({ event, navigate }) => {
 // 參與者互動面板元件
 const ParticipantPanel = ({ event, userResponse, onResponse, onOpenMatchmaking, onOpenTicket, navigate }) => {
     const getButtonClass = (responseType) => {
-        const baseClass = "flex-1 py-3 px-2 text-sm font-semibold rounded-lg transition-all duration-200 transform";
+        const baseClass = "flex-1 py-3 px-2 text-base font-semibold rounded-lg transition-all duration-200 transform";
         if (userResponse === responseType) {
             const selectedClasses = { 
                 wantToGo: 'bg-teal-500 text-white scale-105 shadow-lg', 
@@ -97,7 +103,7 @@ const ParticipantPanel = ({ event, userResponse, onResponse, onOpenMatchmaking, 
             };
             return `${baseClass} ${selectedClasses[responseType]}`;
         }
-        return `${baseClass} bg-slate-200 text-slate-800 hover:bg-slate-300`;
+        return `${baseClass} bg-slate-100 text-slate-800 hover:bg-slate-200`;
     };
     const responses = event.responses || { wantToGo: 0, interested: 0, cantGo: 0 };
     return (
@@ -139,6 +145,7 @@ export default function EventDetailPage() {
     const [loading, setLoading] = useState(true);
     const [isMatchmakingModalOpen, setMatchmakingModalOpen] = useState(false);
     const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
+    const [isParticipantModalOpen, setIsParticipantModalOpen] = useState(false);
 
     useEffect(() => {
         const fetchEvent = async () => {
@@ -153,35 +160,10 @@ export default function EventDetailPage() {
     
     const handleResponse = useCallback(async (responseType) => {
         if (!event || !currentUser || !userProfile?.profile) return;
-
-        const originalEvent = JSON.parse(JSON.stringify(event));
-        const newEvent = JSON.parse(JSON.stringify(event));
-        
-        if (!newEvent.responders) newEvent.responders = {};
-        if (!newEvent.responses) newEvent.responses = { wantToGo: 0, interested: 0, cantGo: 0 };
-        
-        const oldResponse = newEvent.responders[currentUser.uid]?.response;
-
-        if (oldResponse) {
-            if (newEvent.responses[oldResponse] > 0) newEvent.responses[oldResponse]--;
-        }
-        if (oldResponse === responseType) {
-            delete newEvent.responders[currentUser.uid];
+        const updatedEvent = await updateEventResponse(event.id, currentUser.uid, userProfile.profile.nickname, responseType);
+        if (updatedEvent) {
+            setEvent(updatedEvent);
         } else {
-            newEvent.responders[currentUser.uid] = { response: responseType, nickname: userProfile.profile.nickname };
-            newEvent.responses[responseType] = (newEvent.responses[responseType] || 0) + 1;
-        }
-        setEvent(newEvent);
-
-        const updatedEventData = await updateEventResponse(
-            event.id,
-            currentUser.uid,
-            userProfile.profile.nickname,
-            responseType
-        );
-
-        if (!updatedEventData) {
-            setEvent(originalEvent);
             alert("更新回應失敗，請稍後再試。");
         }
     }, [event, currentUser, userProfile]);
@@ -191,32 +173,56 @@ export default function EventDetailPage() {
     
     const isCreator = currentUser?.uid === event.creatorId;
     const userResponse = event.responders?.[currentUser?.uid]?.response;
+    const participants = Object.values(event.responders || {}).filter(r => r.response === 'wantToGo');
+    const eventDate = new Date(event.eventTimestamp);
+    const formattedDate = eventDate.toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' });
+    const formattedTime = eventDate.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: true });
 
     return (
       <>
-        <div className="bg-slate-50 min-h-screen flex flex-col">
+        <div className="bg-slate-50 min-h-screen">
             <header className="p-4 bg-white/95 backdrop-blur-sm border-b flex items-center flex-shrink-0 sticky top-0 z-10">
                 <button onClick={() => navigate(-1)} className="mr-4 text-gray-600 hover:text-indigo-600"><BackIcon /></button>
                 <h2 className="text-xl font-bold text-gray-800 truncate">活動詳情</h2>
             </header>
 
-            <main className="flex-grow overflow-y-auto p-4 space-y-4">
+            <main className="p-4 space-y-4">
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div className="h-56 bg-cover bg-center" style={{ backgroundImage: `url(${event.imageUrl})` }}></div>
-                    <div className="p-6 space-y-4">
-                        <span className="text-xs font-semibold inline-block py-1 px-3 uppercase rounded-full text-white bg-blue-700">
-                            {event.category}
-                        </span>
-                        <h1 className="text-3xl font-bold text-slate-900">{event.title}</h1>
+                    <img src={event.imageUrl} alt={event.title} className="w-full h-56 object-cover" />
+                    
+                    <div className="p-6 space-y-6">
+                        <div>
+                            <span className="text-sm font-bold inline-block py-1 px-3 uppercase rounded-full text-white bg-blue-700">
+                                {event.category}
+                            </span>
+                            <h1 className="text-4xl font-bold text-slate-900 mt-2">{event.title}</h1>
+                        </div>
+
                         {event.eventTimestamp && <CountdownTimer targetDate={event.eventTimestamp} />}
-                        <p className="text-slate-600 whitespace-pre-wrap">{event.description}</p>
-                        <div className="border-t pt-4">
-                             <p className="text-sm"><strong>發起人：</strong> {event.creator}</p>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 border-t border-b py-6">
+                            <InfoItem icon={<CalendarIcon />} label="活動日期">{formattedDate}</InfoItem>
+                            <InfoItem icon={<ClockIcon />} label="活動時間">{formattedTime}</InfoItem>
+                            <InfoItem icon={event.eventType === 'online' ? <GlobeIcon /> : <LocationIcon />} label={event.eventType === 'online' ? "活動連結" : "活動地點"}>
+                                {event.eventType === 'online' ? <a href={event.onlineLink} className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">點擊加入</a> : event.location}
+                            </InfoItem>
+                            <InfoItem icon={<UsersIcon />} label="發起人">{event.creator}</InfoItem>
+                        </div>
+
+                        <div>
+                            <h3 className="text-xl font-bold text-slate-800 mb-2">活動企劃</h3>
+                            <div className="prose prose-slate max-w-none text-lg">
+                                <p className="whitespace-pre-wrap">{event.description}</p>
+                            </div>
                         </div>
                     </div>
 
                     {isCreator ? (
-                        <CreatorPanel event={event} navigate={navigate} />
+                        <CreatorPanel 
+                            event={event} 
+                            navigate={navigate} 
+                            onShowParticipants={() => setIsParticipantModalOpen(true)}
+                        />
                     ) : (
                         <ParticipantPanel 
                             event={event} 
@@ -233,6 +239,11 @@ export default function EventDetailPage() {
         
         <MatchmakingModal isOpen={isMatchmakingModalOpen} onClose={() => setMatchmakingModalOpen(false)} event={event} />
         <EventTicketModal isOpen={isTicketModalOpen} onClose={() => setIsTicketModalOpen(false)} event={event} />
+        <ParticipantListModal 
+            isOpen={isParticipantModalOpen} 
+            onClose={() => setIsParticipantModalOpen(false)}
+            participants={participants}
+        />
       </>
     );
 }
